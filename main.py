@@ -15,6 +15,21 @@ from ui import sm_render_app as sm_main_render_app
 def sm_main_get_backend() -> sm_main_backend_class:
     """Create and start the single cached backend used by the app session."""
     sm_main_load_dotenv()
+    # Streamlit Community Cloud provides secrets through st.secrets rather than
+    # a checked-in .env. Copy only the expected settings into the process
+    # environment so agent.py can read them at live-decision time.
+    try:
+        sm_main_secrets = sm_main_st.secrets
+    except Exception:
+        sm_main_secrets = {}
+    for sm_main_key in ("GEMINI_API_KEY", "GEMINI_MODEL", "SM_DB_PATH"):
+        if not sm_main_os.getenv(sm_main_key):
+            try:
+                sm_main_value = sm_main_secrets.get(sm_main_key)
+            except Exception:
+                sm_main_value = None
+            if sm_main_value is not None:
+                sm_main_os.environ[sm_main_key] = str(sm_main_value)
     configured_path = sm_main_os.getenv("SM_DB_PATH", "").strip()
     database_path = configured_path or str(
         sm_main_pathlib.Path(__file__).resolve().with_name("sentinelmesh.sqlite3")
